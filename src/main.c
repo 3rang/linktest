@@ -28,7 +28,7 @@ static int read_choice(int min, int max)
 	}
 }
 
-static int choose_local_ip(char *out_ip, int out_len)
+static int choose_local_ip(char *out_ip, int out_len, int auto_mode)
 {
 	char ips[MAX_LOCAL_IPS][INET_ADDRSTRLEN];
 	int n = plat_get_all_local_ips(ips, MAX_LOCAL_IPS);
@@ -40,7 +40,7 @@ static int choose_local_ip(char *out_ip, int out_len)
 	for (int i = 0; i < n; i++)
 		printf("  %d) %s\n", i + 1, ips[i]);
 
-	if (n == 1) {
+	if (auto_mode || n == 1) {
 		snprintf(out_ip, out_len, "%s", ips[0]);
 		printf("Using local IP: %s\n", out_ip);
 		return 0;
@@ -55,7 +55,7 @@ static int choose_local_ip(char *out_ip, int out_len)
 	return 0;
 }
 
-static int choose_peer(const char *local_ip, char *out_peer, int out_len)
+static int choose_peer(const char *local_ip, char *out_peer, int out_len, int auto_mode)
 {
 	char peers[32][INET_ADDRSTRLEN];
 	int n = discover_peers(local_ip, peers, 32);
@@ -66,7 +66,7 @@ static int choose_peer(const char *local_ip, char *out_peer, int out_len)
 	for (int i = 0; i < n; i++)
 		printf("  %d) %s\n", i + 1, peers[i]);
 
-	if (n == 1) {
+	if (auto_mode || n == 1) {
 		snprintf(out_peer, out_len, "%s", peers[0]);
 		printf("Using peer: %s\n", out_peer);
 		return 0;
@@ -86,6 +86,7 @@ int main(int argc, char *argv[])
 	char peer[INET_ADDRSTRLEN] = {0};
 	char me[INET_ADDRSTRLEN] = {0};
 	int force_server = 0, force_client = 0;
+	int auto_mode = 0;
 
 	plat_init();
 	printf("linktest v%s\n\n", LINKTEST_VERSION);
@@ -96,23 +97,29 @@ int main(int argc, char *argv[])
 			force_server = 1;
 		else if (strcmp(argv[i], "-c") == 0)
 			force_client = 1;
+		else if (strcmp(argv[i], "--auto") == 0)
+			auto_mode = 1;
 		else
 			snprintf(peer, sizeof(peer), "%s", argv[i]);
 	}
 
-	if (choose_local_ip(me, sizeof(me)) < 0) {
+	if (choose_local_ip(me, sizeof(me), auto_mode) < 0) {
 		fprintf(stderr, "No usable local IPv4 interface found.\n");
 		plat_cleanup();
 		return 1;
 	}
 
 	/* discover peers if no target IP given */
-	if (!peer[0] && choose_peer(me, peer, sizeof(peer)) < 0) {
+	if (!peer[0] && choose_peer(me, peer, sizeof(peer), auto_mode) < 0) {
 		fprintf(stderr, "No peer found.\n");
 		fprintf(stderr, "Run linktest on another machine, or: linktest <peer-ip>\n");
 		plat_cleanup();
 		return 1;
 	}
+
+	/* loopback target should bind loopback so local self-tests work */
+	if (strncmp(peer, "127.", 4) == 0)
+		snprintf(me, sizeof(me), "%s", "127.0.0.1");
 
 	printf("Local: %s\n", me);
 	printf("Peer:  %s\n\n", peer);

@@ -17,9 +17,9 @@ jobs:
           cmake --build build
       - name: Sanity test (loopback)
         run: |
-          ./build/linktest 127.0.0.1 -s &
+          ./build/linktest --auto 127.0.0.1 -s &
           sleep 1
-          ./build/linktest 127.0.0.1 -c | tee result.txt
+          ./build/linktest --auto 127.0.0.1 -c | tee result.txt
           wait
           grep -q "Mbps" result.txt
 
@@ -34,9 +34,9 @@ jobs:
       - name: Sanity test (loopback)
         shell: cmd
         run: |
-          start /B build\Release\linktest.exe 127.0.0.1 -s
+          start /B build\Release\linktest.exe --auto 127.0.0.1 -s
           timeout /t 2 >nul
-          build\Release\linktest.exe 127.0.0.1 -c
+          build\Release\linktest.exe --auto 127.0.0.1 -c
 
   build-macos:
     runs-on: macos-latest
@@ -48,8 +48,8 @@ jobs:
           cmake --build build
       - name: Sanity test (loopback)
         run: |
-          ./build/linktest 127.0.0.1 -s &
+          ./build/linktest --auto 127.0.0.1 -s &
           sleep 1
-          ./build/linktest 127.0.0.1 -c | tee result.txt
+          ./build/linktest --auto 127.0.0.1 -c | tee result.txt
           wait
           grep -q "Mbps" result.txt

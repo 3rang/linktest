@@ -44,6 +44,7 @@ linktest                 choose local IP, discover peers, run test
 linktest <ip>            choose local IP, skip discovery, test against <ip>
 linktest <ip> -s         choose local IP, force this side as receiver
 linktest <ip> -c         choose local IP, force this side as sender
+linktest --auto ...      non-interactive mode (pick first local IP/peer)
 ```
 
 ## 📁 Project Layout
