@@ -39,11 +39,16 @@ int discover_peer(char *peer_ip, int buflen)
 	bcast.sin_port = htons(DISCOVER_PORT);
 	bcast.sin_addr.s_addr = INADDR_BROADCAST;
 
-	char my_ip[INET_ADDRSTRLEN];
-	plat_get_local_ip(my_ip, sizeof(my_ip));
+	/* collect all our own IPs so we don't mistake another adapter for a peer */
+	char my_ips[MAX_LOCAL_IPS][INET_ADDRSTRLEN];
+	int n_ips = plat_get_all_local_ips(my_ips, MAX_LOCAL_IPS);
 
 	printf("Looking for peer (port %d)...\n", DISCOVER_PORT);
-	printf("My IP: %s\n", my_ip);
+	if (n_ips > 0)
+		printf("My IP: %s", my_ips[0]);
+	for (int i = 1; i < n_ips; i++)
+		printf(", %s", my_ips[i]);
+	printf("\n");
 
 	double deadline = plat_now() + TIMEOUT_SEC;
 
@@ -65,8 +70,15 @@ int discover_peer(char *peer_ip, int buflen)
 		char who[INET_ADDRSTRLEN];
 		inet_ntop(AF_INET, &from.sin_addr, who, sizeof(who));
 
-		/* ignore our own broadcast */
-		if (strcmp(who, my_ip) == 0)
+		/* ignore packets from any of our own addresses */
+		int is_self = 0;
+		for (int i = 0; i < n_ips; i++) {
+			if (strcmp(who, my_ips[i]) == 0) {
+				is_self = 1;
+				break;
+			}
+		}
+		if (is_self)
 			continue;
 
 		snprintf(peer_ip, buflen, "%s", who);

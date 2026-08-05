@@ -80,3 +80,39 @@ void plat_get_local_ip(char *buf, int buflen)
 	freeifaddrs(list);
 #endif
 }
+
+int plat_get_all_local_ips(char ips[][INET_ADDRSTRLEN], int max)
+{
+	int count = 0;
+#ifdef _WIN32
+	char hostname[256];
+	struct addrinfo hints = {0};
+	struct addrinfo *res = NULL, *p;
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_DGRAM;
+	if (gethostname(hostname, sizeof(hostname)) == 0 &&
+	    getaddrinfo(hostname, NULL, &hints, &res) == 0) {
+		for (p = res; p && count < max; p = p->ai_next) {
+			struct sockaddr_in *sa = (struct sockaddr_in *)p->ai_addr;
+			inet_ntop(AF_INET, &sa->sin_addr, ips[count], INET_ADDRSTRLEN);
+			count++;
+		}
+		freeaddrinfo(res);
+	}
+#else
+	struct ifaddrs *list, *p;
+	if (getifaddrs(&list) == -1)
+		return 0;
+	for (p = list; p && count < max; p = p->ifa_next) {
+		if (!p->ifa_addr || p->ifa_addr->sa_family != AF_INET)
+			continue;
+		if (p->ifa_flags & IFF_LOOPBACK)
+			continue;
+		struct sockaddr_in *sa = (struct sockaddr_in *)p->ifa_addr;
+		inet_ntop(AF_INET, &sa->sin_addr, ips[count], INET_ADDRSTRLEN);
+		count++;
+	}
+	freeifaddrs(list);
+#endif
+	return count;
+}

@@ -34,4 +34,8 @@ void    plat_sleep_ms(int ms);
 double  plat_now(void);
 void    plat_get_local_ip(char *buf, int buflen);
 
+#define MAX_LOCAL_IPS 16
+/* Fill ips[] with all non-loopback IPv4 addresses. Returns count. */
+int     plat_get_all_local_ips(char ips[][INET_ADDRSTRLEN], int max);
+
 #endif
