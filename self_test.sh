@@ -1,5 +1,6 @@
 #!/bin/sh
-./build/linktest 127.0.0.1 -s &
+IP=$(hostname -I | awk '{print $1}')
+printf '1\n' | ./build/linktest "$IP" -s &
 sleep 1
-./build/linktest 127.0.0.1 -c
+printf '1\n' | ./build/linktest "$IP" -c
 wait

@@ -22,7 +22,7 @@ static void print_summary(double secs, long long bytes, double mbps)
 
 /* ---- Server (receiver) ---- */
 
-int run_server(void)
+int run_server_on(const char *local_ip)
 {
 	int lsock = socket(AF_INET, SOCK_STREAM, 0);
 	if (lsock < 0) {
@@ -36,7 +36,11 @@ int run_server(void)
 	struct sockaddr_in addr = {0};
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons(DATA_PORT);
-	addr.sin_addr.s_addr = INADDR_ANY;
+	if (inet_pton(AF_INET, local_ip, &addr.sin_addr) != 1) {
+		fprintf(stderr, "Invalid local IP: %s\n", local_ip);
+		plat_close(lsock);
+		return -1;
+	}
 
 	if (bind(lsock, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
 		perror("bind");
@@ -45,7 +49,7 @@ int run_server(void)
 	}
 	listen(lsock, 1);
 
-	printf("Receiver listening on port %d\n", DATA_PORT);
+	printf("Receiver listening on %s:%d\n", local_ip, DATA_PORT);
 
 	struct timeval tv = {TIMEOUT_SEC, 0};
 	setsockopt(lsock, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv, sizeof(tv));

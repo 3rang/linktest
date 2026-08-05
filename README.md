@@ -8,7 +8,8 @@ Testing network throughput between two devices usually means installing tools, c
 
 ## ✅ What linktest Does
 
-- 📡 Auto-discovers the other machine on your LAN
+- 📡 Lets you choose the local interface/IP first
+- 📡 Auto-discovers other machines from that selected IP
 - 🔄 Decides who sends and who receives (automatically)
 - 🚀 Streams TCP traffic for 5 seconds
 - 📊 Prints throughput per second and a final average
@@ -39,10 +40,10 @@ Needs CMake 3.10+ and any C11 compiler.
 ## 💻 Usage
 
 ```
-linktest                 auto-discover peer, run test
-linktest <ip>            skip discovery, test against <ip>
-linktest <ip> -s         force this side as receiver
-linktest <ip> -c         force this side as sender
+linktest                 choose local IP, discover peers, run test
+linktest <ip>            choose local IP, skip discovery, test against <ip>
+linktest <ip> -s         choose local IP, force this side as receiver
+linktest <ip> -c         choose local IP, force this side as sender
 ```
 
 ## 📁 Project Layout
@@ -63,12 +64,14 @@ linktest/
 
 ## ⚙️ How It Works
 
-1. Both sides broadcast a UDP beacon on port 5199
-2. When one hears a beacon from a different IP → that's the peer
-3. Lower IP becomes receiver, higher IP becomes sender
-4. Sender opens TCP to receiver on port 5200
-5. Sender blasts 128 KB chunks for 5 seconds
-6. Both report throughput per second and final average
+1. Show all local IPv4 addresses and let the user pick one
+2. Bind UDP discovery to that selected local IP on port 5199
+3. Broadcast beacon packets and collect discovered peers
+4. If multiple peers are found, user picks one from the list
+5. Lower IP becomes receiver, higher IP becomes sender (unless forced)
+6. Sender opens TCP to receiver on port 5200
+7. Sender blasts 128 KB chunks for 5 seconds
+8. Both report throughput per second and final average
 
 ## 🔌 Ports
 

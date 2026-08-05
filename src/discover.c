@@ -4,11 +4,11 @@
 #include "linktest.h"
 
 /*
- * Broadcast a magic string on UDP, listen for someone else doing the same.
- * First foreign IP we hear back is our peer.
+ * Broadcast a magic string on one selected local interface and collect peers.
  */
-int discover_peer(char *peer_ip, int buflen)
+int discover_peers(const char *local_ip, char peers[][INET_ADDRSTRLEN], int max_peers)
 {
+	int found = 0;
 	int sock = socket(AF_INET, SOCK_DGRAM, 0);
 	if (sock < 0) {
 		perror("socket");
@@ -22,7 +22,11 @@ int discover_peer(char *peer_ip, int buflen)
 	struct sockaddr_in local = {0};
 	local.sin_family = AF_INET;
 	local.sin_port = htons(DISCOVER_PORT);
-	local.sin_addr.s_addr = INADDR_ANY;
+	if (inet_pton(AF_INET, local_ip, &local.sin_addr) != 1) {
+		fprintf(stderr, "Invalid local IP: %s\n", local_ip);
+		plat_close(sock);
+		return -1;
+	}
 
 	if (bind(sock, (struct sockaddr *)&local, sizeof(local)) < 0) {
 		perror("bind");
@@ -39,16 +43,8 @@ int discover_peer(char *peer_ip, int buflen)
 	bcast.sin_port = htons(DISCOVER_PORT);
 	bcast.sin_addr.s_addr = INADDR_BROADCAST;
 
-	/* collect all our own IPs so we don't mistake another adapter for a peer */
-	char my_ips[MAX_LOCAL_IPS][INET_ADDRSTRLEN];
-	int n_ips = plat_get_all_local_ips(my_ips, MAX_LOCAL_IPS);
-
 	printf("Looking for peer (port %d)...\n", DISCOVER_PORT);
-	if (n_ips > 0)
-		printf("My IP: %s", my_ips[0]);
-	for (int i = 1; i < n_ips; i++)
-		printf(", %s", my_ips[i]);
-	printf("\n");
+	printf("Using local IP: %s\n", local_ip);
 
 	double deadline = plat_now() + TIMEOUT_SEC;
 
@@ -70,23 +66,26 @@ int discover_peer(char *peer_ip, int buflen)
 		char who[INET_ADDRSTRLEN];
 		inet_ntop(AF_INET, &from.sin_addr, who, sizeof(who));
 
-		/* ignore packets from any of our own addresses */
-		int is_self = 0;
-		for (int i = 0; i < n_ips; i++) {
-			if (strcmp(who, my_ips[i]) == 0) {
-				is_self = 1;
+		if (strcmp(who, local_ip) == 0)
+			continue;
+
+		int exists = 0;
+		for (int i = 0; i < found; i++) {
+			if (strcmp(peers[i], who) == 0) {
+				exists = 1;
 				break;
 			}
 		}
-		if (is_self)
+		if (exists)
 			continue;
 
-		snprintf(peer_ip, buflen, "%s", who);
-		printf("Found: %s\n", peer_ip);
-		plat_close(sock);
-		return 0;
+		if (found < max_peers) {
+			snprintf(peers[found], INET_ADDRSTRLEN, "%s", who);
+			printf("Found peer: %s\n", peers[found]);
+			found++;
+		}
 	}
 
 	plat_close(sock);
-	return -1;
+	return found;
 }

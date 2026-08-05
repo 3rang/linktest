@@ -20,10 +20,12 @@
 #define INTERVAL_SEC   1
 
 /* discover.c */
-int discover_peer(char *peer_ip, int buflen);
+int discover_peers(const char *local_ip,
+			  char peers[][INET_ADDRSTRLEN],
+			  int max_peers);
 
 /* tput.c */
-int run_server(void);
+int run_server_on(const char *local_ip);
 int run_client(const char *peer_ip);
 
 #endif
