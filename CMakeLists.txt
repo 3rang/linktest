@@ -11,7 +11,12 @@ add_executable(linktest
 )
 
 target_include_directories(linktest PRIVATE inc)
-target_compile_options(linktest PRIVATE -Wall -Wextra -O2)
+
+if(MSVC)
+    target_compile_options(linktest PRIVATE /W4 /O2)
+else()
+    target_compile_options(linktest PRIVATE -Wall -Wextra -O2)
+endif()
 
 if(WIN32)
     target_link_libraries(linktest ws2_32 iphlpapi)
