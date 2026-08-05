@@ -1,0 +1,67 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            name: linux-x64
+            ext: ""
+          - os: windows-latest
+            name: windows-x64
+            ext: ".exe"
+          - os: macos-latest
+            name: macos-arm64
+            ext: ""
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --config Release
+
+      - name: Package (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          mkdir -p dist
+          cp build/linktest dist/linktest-${{ matrix.name }}
+          chmod +x dist/linktest-${{ matrix.name }}
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: |
+          mkdir dist
+          copy build\Release\linktest.exe dist\linktest-${{ matrix.name }}.exe
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linktest-${{ matrix.name }}
+          path: dist/
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*
+          generate_release_notes: true
